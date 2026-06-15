@@ -1,1 +1,42 @@
+MUDANÇAS REALIZADAS NO PROJETO SN-2026
 
+ARQUIVO ALTERADO: index.html
+
+
+
+FUNÇÃO loadHistorico() - PRINCIPAL MUDANÇA
+
+Antes: consultava a tabela historico_vra (VAZIA)
+const dados = await sbFetch(`historico_vra?or=(icao_origem.eq.${icao},icao_destino.eq.${icao})&ano_mes=eq.${anoMes}...`);
+
+Depois: consulta a tabela voos (COM DADOS)
+const [ano, mes] = anoMes.split('-');
+const dataInicio = `${ano}-${mes}-01`;
+const ultimoDia = new Date(ano, mes, 0).getDate();
+const dataFim = `${ano}-${mes}-${ultimoDia}`;
+const dados = await sbFetch(`voos?data_referencia=gte.${dataInicio}&data_referencia=lte.${dataFim}&or=(icao_origem.eq.${icao},icao_destino.eq.${icao})...`);
+
+
+ESTATÍSTICAS DO HISTÓRICO
+
+Antes:
+const realiz = dados.filter(f => f.situacao.includes('realiz')).length;
+const canc = dados.filter(f => f.situacao.includes('cancel')).length;
+
+Depois:
+const programados = dados.length;
+const cancelados = 0;
+
+
+RENDERIZAÇÃO DA TABELA
+
+Antes: exibia coluna "Atraso Partida" com minutos
+Depois: exibe coluna "Status" com valor "Programado"
+
+
+TEXTOS DA INTERFACE
+
+- Título: "Consulta histórica — Voos registrados" (antes era VRA/ANAC)
+- Rodapé: "Histórico: Voos registrados" (antes link para ANAC)
+
+- .github/workflows/importar-historico.yml
