@@ -204,7 +204,22 @@ for f in todos_voos:
     if not empresa or not nr_voo or not origem or not destino:
         continue
     registros.append(normalizar_voo(f))
+unicos = {}
 
+for r in registros:
+    chave = (
+        r["data_referencia"],
+        r["icao_empresa"],
+        r["numero_voo"],
+        r["icao_origem"],
+        r["icao_destino"],
+        r["etapa"],
+    )
+    unicos[chave] = r
+
+registros = list(unicos.values())
+
+print(f"Registros após remoção de duplicatas: {len(registros)}")
 print(f"\nRegistros filtrados para os aeroportos configurados: {len(registros)}")
 print(
     "  Obs: o upsert usa constraint voos_unique "
