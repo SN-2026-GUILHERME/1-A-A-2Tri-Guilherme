@@ -646,10 +646,20 @@
       }
       document.getElementById('hist-meta').textContent = `Consultando histórico VRA de ${escapeHtml(icao)} em ${anoMes}...`;
       try {
-        const dados = await sbFetch(
-          `historico_vra?or=(icao_origem.eq.${icao},icao_destino.eq.${icao})` +
-          `&ano_mes=eq.${anoMes}&order=dt_referencia.asc&limit=1000`
-        );
+        // Pega os últimos 30-60 dias da tabela voos (simulando histórico)
+const dataInicio = new Date(anoMes + "-01");
+const dataFim = new Date(dataInicio);
+dataFim.setMonth(dataFim.getMonth() + 1);
+dataFim.setDate(dataFim.getDate() - 1);
+
+const dataInicioStr = dataInicio.toISOString().split('T')[0];
+const dataFimStr = dataFim.toISOString().split('T')[0];
+
+const dados = await sbFetch(
+  `voos?data_referencia=gte.${dataInicioStr}&data_referencia=lte.${dataFimStr}` +
+  `&or=(icao_origem.eq.${icao},icao_destino.eq.${icao})` +
+  `&order=data_referencia.asc&limit=1000`
+);
         histAll = dados; pagHist = 1;
 
         // Estatísticas
