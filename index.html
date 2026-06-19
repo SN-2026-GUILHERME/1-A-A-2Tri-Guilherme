@@ -30,7 +30,6 @@
     .clock { font-family: var(--mono); font-size: 1.35rem; color: var(--accent);
              letter-spacing: .1em; }
 
-    /* Abas */
     .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border);
             margin-bottom: 1.5rem; }
     .tab { padding: .6rem 1.2rem; font-size: .85rem; cursor: pointer;
@@ -42,7 +41,6 @@
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    /* Filtros */
     .filters-panel { background: var(--surface); border: 1px solid var(--border);
                      border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
     .filters-title { font-size: .67rem; font-weight: 700; letter-spacing: .1em;
@@ -62,7 +60,6 @@
     .btn:disabled { opacity: .4; cursor: default; }
     .divider { width: 1px; height: 36px; background: var(--border); align-self: flex-end; }
 
-    /* Cards */
     .info-cards { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
     .info-card { background: var(--surface); border: 1px solid var(--border);
                  border-radius: 8px; padding: .55rem .9rem; }
@@ -80,7 +77,6 @@
     .arrow-in  { color: var(--green);  font-size: .9rem; }
     .arrow-out { color: var(--orange); font-size: .9rem; }
 
-    /* Tabela */
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: .79rem; }
     thead th { background: var(--surface); color: var(--muted); font-weight: 600;
@@ -98,8 +94,6 @@
 
     .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px;
              border-radius: 99px; font-size: .68rem; font-weight: 600; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .badge-programado .dot { background: var(--yellow); }
     .badge-programado { background: rgba(250,204,21,.1); color: var(--yellow); }
     .badge-domestico  { background: rgba(56,189,248,.08); color: var(--accent); }
     .badge-inter      { background: rgba(167,139,250,.1); color: var(--purple); }
@@ -124,7 +118,6 @@
                        border-color: var(--accent); font-weight: 600; }
     .page-btn:disabled { opacity: .3; cursor: default; }
 
-    /* Histórico */
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
                  gap: .75rem; margin-bottom: 1.5rem; }
     .stat-card { background: var(--surface); border: 1px solid var(--border);
@@ -139,33 +132,14 @@
              justify-content: space-between; gap: .5rem; }
     footer a { color: var(--accent); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
-
- /*CSS DO GRÁFICO */
-   .chart-container {
-  width: 100%;
-  max-width: 600px;   /* evita ficar enorme em telas grandes */
-  height: 260px;      /* aqui controla o tamanho */
-  margin: 1rem auto;
-  position: relative;
-}
-
-#graficoAeroportos {
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-}
   </style>
-  
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  
 
-  
   <script>
-    const SUPABASE_URL      = "https://huvqrrjxcfibhfmcjeow.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_d4N1jJo8L_7g_Ht5xZtbrQ_YPaa42-h";
-    const PER_PAGE          = 50;
+    const SUPABASE_URL = "https://tkuiltpyosykxajdtbec.supabase.co";
+    const SUPABASE_ANON_KEY = "SUA_CHAVE_ANON_AQUI";
+    const PER_PAGE = 50;
   </script>
 
   <header>
@@ -179,18 +153,13 @@
     </div>
   </header>
 
-  <!-- Abas -->
   <div class="tabs">
     <div class="tab active" onclick="showTab('voos')">Voos do dia</div>
     <div class="tab" onclick="showTab('historico')">Histórico ANAC</div>
     <div class="tab" onclick="showTab('pipeline')">Pipeline</div>
   </div>
 
-  <!-- ══════════════════════════════════════════════ -->
-  <!-- ABA: VOOS DO DIA                              -->
-  <!-- ══════════════════════════════════════════════ -->
   <div id="tab-voos" class="tab-panel active">
-
     <div class="filters-panel">
       <div class="filters-title">Selecionar aeroporto e data</div>
       <div class="filters-row">
@@ -242,25 +211,21 @@
       <div class="info-card"><div class="lbl">Partidas</div><div class="val" id="card-partidas">—</div></div>
       <div class="info-card"><div class="lbl">Último pipeline</div><div class="val" id="card-pipeline">—</div></div>
     </div>
-    <!-- ══════════════════════════════════════════════ -->
-  <!-- Local dos Gráficos                          -->
-  <!-- ══════════════════════════════════════════════ -->
-  <div class="chart-container">
-  <canvas id="graficoAeroportos"></canvas>
-  </div>
 
     <div id="meta-bar">Carregando lista de aeroportos...</div>
 
     <div class="section-title"><span class="arrow-in">↓</span> Chegadas</div>
     <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th onclick="sortTable('chegadas','chegada_iso')">Horário (BRT) ↕</th>
-          <th>Voo</th><th>Companhia</th><th>Aeronave</th>
-          <th>Assentos</th>
-          <th onclick="sortTable('chegadas','icao_origem')">Origem ↕</th>
-          <th>Operação</th>
-        </tr></thead>
+        <thead>
+          <tr>
+            <th onclick="sortTable('chegadas','chegada_iso')">Horário (BRT) ↕</th>
+            <th>Voo</th><th>Companhia</th><th>Aeronave</th>
+            <th>Assentos</th>
+            <th onclick="sortTable('chegadas','icao_origem')">Origem ↕</th>
+            <th>Operação</th>
+          </tr>
+        </thead>
         <tbody id="tbody-chegadas">
           <tr><td colspan="7" class="empty">Selecione um aeroporto para carregar os voos.</td></tr>
         </tbody>
@@ -271,13 +236,15 @@
     <div class="section-title"><span class="arrow-out">↑</span> Partidas</div>
     <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th onclick="sortTable('partidas','partida_iso')">Horário (BRT) ↕</th>
-          <th>Voo</th><th>Companhia</th><th>Aeronave</th>
-          <th>Assentos</th>
-          <th onclick="sortTable('partidas','icao_destino')">Destino ↕</th>
-          <th>Operação</th>
-        </tr></thead>
+        <thead>
+          <tr>
+            <th onclick="sortTable('partidas','partida_iso')">Horário (BRT) ↕</th>
+            <th>Voo</th><th>Companhia</th><th>Aeronave</th>
+            <th>Assentos</th>
+            <th onclick="sortTable('partidas','icao_destino')">Destino ↕</th>
+            <th>Operação</th>
+          </tr>
+        </thead>
         <tbody id="tbody-partidas">
           <tr><td colspan="7" class="empty">Selecione um aeroporto para carregar os voos.</td></tr>
         </tbody>
@@ -286,9 +253,6 @@
     <div class="pagination" id="pag-partidas"></div>
   </div>
 
-  <!-- ══════════════════════════════════════════════ -->
-  <!-- ABA: HISTÓRICO ANAC                           -->
-  <!-- ══════════════════════════════════════════════ -->
   <div id="tab-historico" class="tab-panel">
     <div class="filters-panel">
       <div class="filters-title">Consulta histórica — VRA/ANAC</div>
@@ -310,20 +274,20 @@
       <div class="stat-card"><div class="st-lbl">Total de voos</div><div class="st-val" id="h-total">—</div></div>
       <div class="stat-card"><div class="st-lbl">Realizados</div><div class="st-val" id="h-real">—</div><div class="st-sub" id="h-real-pct"></div></div>
       <div class="stat-card"><div class="st-lbl">Cancelados</div><div class="st-val" id="h-canc">—</div><div class="st-sub" id="h-canc-pct"></div></div>
-      <div class="stat-card"><div class="st-lbl">Atraso médio (partida)</div><div class="st-val" id="h-atraso">—</div><div class="st-sub">minutos</div></div>
+      <div class="stat-card"><div class="st-lbl">Atraso médio</div><div class="st-val" id="h-atraso">—</div><div class="st-sub">minutos</div></div>
     </div>
-
-    
 
     <div id="hist-meta" style="font-size:.74rem;color:var(--muted);margin-bottom:1rem"></div>
 
     <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th>Voo</th><th>Companhia</th><th>Data</th>
-          <th>Origem</th><th>Destino</th>
-          <th>Atraso Partida</th><th>Situação</th>
-        </tr></thead>
+        <thead>
+          <tr>
+            <th>Voo</th><th>Companhia</th><th>Data</th>
+            <th>Origem</th><th>Destino</th>
+            <th>Atraso</th><th>Situação</th>
+          </tr>
+        </thead>
         <tbody id="tbody-historico">
           <tr><td colspan="7" class="empty">Selecione um aeroporto e mês para consultar o histórico.</td></tr>
         </tbody>
@@ -332,19 +296,18 @@
     <div class="pagination" id="pag-historico"></div>
   </div>
 
-  <!-- ══════════════════════════════════════════════ -->
-  <!-- ABA: PIPELINE                                 -->
-  <!-- ══════════════════════════════════════════════ -->
   <div id="tab-pipeline" class="tab-panel">
     <div style="margin-bottom:1rem">
       <button class="btn" onclick="loadPipeline()">↺ Atualizar log</button>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr>
-          <th>Concluído em (BRT)</th><th>Aeroportos</th>
-          <th>Processados</th><th>Lotes</th><th>Erros</th><th>Status</th>
-        </tr></thead>
+        <thead>
+          <tr>
+            <th>Concluído em (BRT)</th><th>Aeroportos</th>
+            <th>Processados</th><th>Lotes</th><th>Erros</th><th>Status</th>
+          </tr>
+        </thead>
         <tbody id="tbody-pipeline">
           <tr><td colspan="6" class="empty">Clique em Atualizar para carregar o log.</td></tr>
         </tbody>
@@ -361,9 +324,6 @@
   </footer>
 
   <script>
-    /* ── Segurança: escapeHtml ────────────────────────────────────────────
-       Sanitiza qualquer valor antes de inserir no HTML,
-       reduzindo o risco de injeção de HTML via dados da API.         */
     function escapeHtml(value) {
       return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -373,14 +333,12 @@
         .replaceAll("'", '&#039;');
     }
 
-    /* ── Relógio ─────────────────────────────────────────────────────── */
     function tick() {
       document.getElementById('clock').textContent =
         new Date().toLocaleTimeString('pt-BR');
     }
     tick(); setInterval(tick, 1000);
 
-    /* ── API Supabase ────────────────────────────────────────────────── */
     const HEADERS = {
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -388,36 +346,35 @@
 
     async function sbFetch(path) {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: HEADERS });
-      if (!r.ok) throw new Error(`Supabase HTTP ${r.status}: ${await r.text()}`);
+      if (!r.ok) throw new Error(`Supabase HTTP ${r.status}`);
       return r.json();
     }
 
-    /* ── Abas ────────────────────────────────────────────────────────── */
     function showTab(id) {
-      document.querySelectorAll('.tab').forEach((t, i) =>
-        t.classList.toggle('active', ['voos','historico','pipeline'][i] === id));
+      const tabs = ['voos', 'historico', 'pipeline'];
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', tabs[i] === id);
+      });
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.getElementById(`tab-${id}`).classList.add('active');
       if (id === 'pipeline') loadPipeline();
     }
 
-    /* ── Estado global ───────────────────────────────────────────────── */
-    let airports     = [];
-    let currentIcao  = '';
-    let chegadasAll  = [], partidasAll  = [];
+    let airports = [];
+    let currentIcao = '';
+    let chegadasAll = [], partidasAll = [];
     let chegadasFilt = [], partidasFilt = [];
-    let pagChegadas  = 1, pagPartidas  = 1;
+    let pagChegadas = 1, pagPartidas = 1;
     let sortChegadas = { col: 'chegada_iso', asc: true };
     let sortPartidas = { col: 'partida_iso', asc: true };
     let histAll = [], pagHist = 1;
-    let graficoAeroportos = null;
 
-    /* ── Helpers ─────────────────────────────────────────────────────── */
     function fmtHora(iso) {
       if (!iso) return '—';
-      try { return new Date(iso).toLocaleTimeString('pt-BR',
-        { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
-      catch { return iso; }
+      try {
+        return new Date(iso).toLocaleTimeString('pt-BR',
+          { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+      } catch { return iso; }
     }
 
     function fmtData(str) {
@@ -428,11 +385,54 @@
 
     function fmtDatetime(iso) {
       if (!iso) return '—';
-      try { return new Date(iso).toLocaleString('pt-BR',
-        { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
-          day: '2-digit', month: '2-digit' }); }
-      catch { return iso; }
+      try {
+        return new Date(iso).toLocaleString('pt-BR',
+          { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
+            day: '2-digit', month: '2-digit' });
+      } catch { return iso; }
     }
 
     function todayIso() {
-     
+      return new Date().toLocaleDateString('pt-BR',
+        { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
+    }
+
+    function opBadge(tipo) {
+      const t = escapeHtml(tipo || '');
+      if (!t) return '';
+      return t.includes('nter')
+        ? '<span class="badge badge-inter">✈ Internacional</span>'
+        : '<span class="badge badge-domestico">✈ Doméstico</span>';
+    }
+
+    function situacaoBadge(sit) {
+      const s = (sit || '').toLowerCase();
+      if (!s) return '—';
+      if (s.includes('realizado') || s.includes('real') || s.includes('partiu'))
+        return '<span class="badge badge-realizado">✓ realizado</span>';
+      if (s.includes('cancelado') || s.includes('cancel'))
+        return '<span class="badge badge-cancelado">✕ cancelado</span>';
+      if (s.includes('desviado'))
+        return '<span class="badge badge-atrasado">↗ desviado</span>';
+      return `<span class="badge badge-programado">✈ ${escapeHtml(sit)}</span>`;
+    }
+
+    function statusPipelineBadge(st) {
+      const s = escapeHtml(st || '');
+      if (s === 'concluido') return '<span class="badge badge-realizado">✓ concluído</span>';
+      if (s === 'erro_parcial') return '<span class="badge badge-atrasado">⚠ erro parcial</span>';
+      if (s === 'erro_critico') return '<span class="badge badge-cancelado">✕ erro crítico</span>';
+      if (s === 'sem_dados') return '<span class="badge badge-programado">— sem dados</span>';
+      return `<span class="badge">${s}</span>`;
+    }
+
+    async function loadAirports() {
+      try {
+        const r = await fetch('data/airports.json');
+        airports = await r.json();
+        const states = [...new Set(airports.map(a => a.state))].sort();
+        const sel = document.getElementById('sel-state');
+        sel.innerHTML = '<option value="">Todos os estados</option>';
+        states.forEach(s => {
+          const o = document.createElement('option');
+          o.value = o
