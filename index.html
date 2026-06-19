@@ -94,6 +94,8 @@
 
     .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px;
              border-radius: 99px; font-size: .68rem; font-weight: 600; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .badge-programado .dot { background: var(--yellow); }
     .badge-programado { background: rgba(250,204,21,.1); color: var(--yellow); }
     .badge-domestico  { background: rgba(56,189,248,.08); color: var(--accent); }
     .badge-inter      { background: rgba(167,139,250,.1); color: var(--purple); }
@@ -255,7 +257,7 @@
 
   <div id="tab-historico" class="tab-panel">
     <div class="filters-panel">
-      <div class="filters-title">Consulta histórica — VRA/ANAC</div>
+      <div class="filters-title">Consulta histórica — Voos registrados</div>
       <div class="filters-row">
         <div class="filter-group">
           <label for="hist-icao">Aeroporto (ICAO)</label>
@@ -272,9 +274,9 @@
 
     <div class="stat-grid" id="hist-stats" style="display:none">
       <div class="stat-card"><div class="st-lbl">Total de voos</div><div class="st-val" id="h-total">—</div></div>
-      <div class="stat-card"><div class="st-lbl">Realizados</div><div class="st-val" id="h-real">—</div><div class="st-sub" id="h-real-pct"></div></div>
+      <div class="stat-card"><div class="st-lbl">Programados</div><div class="st-val" id="h-real">—</div><div class="st-sub" id="h-real-pct"></div></div>
       <div class="stat-card"><div class="st-lbl">Cancelados</div><div class="st-val" id="h-canc">—</div><div class="st-sub" id="h-canc-pct"></div></div>
-      <div class="stat-card"><div class="st-lbl">Atraso médio</div><div class="st-val" id="h-atraso">—</div><div class="st-sub">minutos</div></div>
+      <div class="stat-card"><div class="st-lbl">Status</div><div class="st-val" id="h-atraso">—</div><div class="st-sub">dados do dia</div></div>
     </div>
 
     <div id="hist-meta" style="font-size:.74rem;color:var(--muted);margin-bottom:1rem"></div>
@@ -285,7 +287,7 @@
           <tr>
             <th>Voo</th><th>Companhia</th><th>Data</th>
             <th>Origem</th><th>Destino</th>
-            <th>Atraso</th><th>Situação</th>
+            <th>Status</th><th>Situação</th>
           </tr>
         </thead>
         <tbody id="tbody-historico">
@@ -317,9 +319,9 @@
 
   <footer>
     <span>Dados: <a href="https://sas.anac.gov.br/sas/siros_api/" target="_blank">SIROS/ANAC</a> ·
-          Histórico: <a href="https://sistemas.anac.gov.br/dadosabertos/" target="_blank">VRA/ANAC</a> ·
+          Histórico: <a href="#" target="_blank">Voos registrados</a> ·
           Banco: <a href="https://supabase.com" target="_blank">Supabase</a></span>
-    <span>Horários em BRT (UTC-3) · Histórico acumulado disponível</span>
+    <span>Horários em BRT (UTC-3) · Histórico baseado na tabela voos</span>
     <span><a href="https://github.com/SN-2026" target="_blank">Ver no GitHub</a></span>
   </footer>
 
@@ -405,18 +407,6 @@
         : '<span class="badge badge-domestico">✈ Doméstico</span>';
     }
 
-    function situacaoBadge(sit) {
-      const s = (sit || '').toLowerCase();
-      if (!s) return '—';
-      if (s.includes('realizado') || s.includes('real') || s.includes('partiu'))
-        return '<span class="badge badge-realizado">✓ realizado</span>';
-      if (s.includes('cancelado') || s.includes('cancel'))
-        return '<span class="badge badge-cancelado">✕ cancelado</span>';
-      if (s.includes('desviado'))
-        return '<span class="badge badge-atrasado">↗ desviado</span>';
-      return `<span class="badge badge-programado">✈ ${escapeHtml(sit)}</span>`;
-    }
-
     function statusPipelineBadge(st) {
       const s = escapeHtml(st || '');
       if (s === 'concluido') return '<span class="badge badge-realizado">✓ concluído</span>';
@@ -435,4 +425,15 @@
         sel.innerHTML = '<option value="">Todos os estados</option>';
         states.forEach(s => {
           const o = document.createElement('option');
-          o.value = o
+          o.value = o.textContent = s; sel.appendChild(o);
+        });
+        document.getElementById('meta-bar').textContent =
+          `${airports.length} aeroportos disponíveis · Dados via Supabase`;
+      } catch(e) {
+        document.getElementById('meta-bar').textContent = 'Erro ao carregar aeroportos: ' + e.message;
+      }
+      document.getElementById('sel-date').value = todayIso();
+    }
+
+    function onStateChange() {
+      const state = document.getElementById('sel-state').va
