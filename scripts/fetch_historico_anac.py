@@ -1,3 +1,18 @@
+"""
+fetch_historico_anac.py — Dados históricos ANAC/VRA + Supabase
+Busca o arquivo VRA (Voo Regular Ativo) do portal de dados abertos da ANAC,
+processa e insere na tabela historico_vra do Supabase.
+
+Execução: mensal (1º dia de cada mês via GitHub Actions)
+
+Variáveis de ambiente:
+  SUPABASE_URL         → URL do projeto (GitHub Secret)
+  SUPABASE_SERVICE_KEY → secret key / service_role key (GitHub Secret)
+  AIRPORTS             → ICAOs para filtrar (GitHub Variable)
+  ANO_MES              → Período a buscar no formato AAAA-MM
+                         Padrão: mês anterior ao atual
+"""
+
 import csv
 import io
 import os
@@ -18,47 +33,55 @@ db = create_client(SUPABASE_URL, SUPABASE_KEY)
 print(f"Supabase conectado: {SUPABASE_URL}")
 
 airports_env = os.environ.get("AIRPORTS", "SBCA")
-AIRPORTS = [a.strip().upper() for a in airports_env.split(",") if a.strip()]
-LOTE = 500
+AIRPORTS     = [a.strip().upper() for a in airports_env.split(",") if a.strip()]
+LOTE         = 500
 
-BRT = timezone(timedelta(hours=-3))
+BRT  = timezone(timedelta(hours=-3))
 hoje = datetime.now(BRT)
 
 if os.environ.get("ANO_MES"):
     ano_mes = os.environ["ANO_MES"].strip()
 else:
     primeiro_do_mes = hoje.replace(day=1)
-    mes_anterior = primeiro_do_mes - timedelta(days=1)
-    ano_mes = mes_anterior.strftime("%Y-%m")
+    mes_anterior    = primeiro_do_mes - timedelta(days=1)
+    ano_mes         = mes_anterior.strftime("%Y-%m")
 
 ano, mes = ano_mes.split("-")
 
 print(f"Período histórico: {ano_mes}")
 print(f"Aeroportos filtrados: {', '.join(AIRPORTS)}")
 
-VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es/VRA/{ano}/{ano}{mes}.csv"
+VRA_URL = (
+    f"https://sistemas.anac.gov.br/dadosabertos/"
+    f"Voos%20e%20opera%C3%A7%C3%B5es/VRA/{ano}/{ano}{mes}.csv"
+)
 
-VRA_URL_ALT = f"https://www.gov.br/anac/pt-br/assuntos/dados-e-estatisticas/dados-estatisticos/arquivos/VRA{ano}{mes}.csv"
+VRA_URL_ALT = (
+    f"https://www.gov.br/anac/pt-br/assuntos/dados-e-estatisticas/"
+    f"dados-estatisticos/arquivos/VRA{ano}{mes}.csv"
+)
 
 COLS = {
-    "empresa": ["EMPRESA (SIGLA)", "Empresa (Sigla)", "sg_empresa_icao"],
-    "voo": ["NÚMERO VOO", "Numero Voo", "nr_voo"],
-    "origem": ["ORIGEM", "Aeroporto Origem", "sg_icao_origem"],
-    "destino": ["DESTINO", "Aeroporto Destino", "sg_icao_destino"],
-    "dt_ref": ["DT_REFERENCIA", "Dt Referencia", "data_referencia"],
-    "partida_prev": ["PARTIDA PREVISTA", "Partida Prevista", "dt_partida_prevista"],
-    "partida_real": ["PARTIDA REAL", "Partida Real", "dt_partida_real"],
-    "chegada_prev": ["CHEGADA PREVISTA", "Chegada Prevista", "dt_chegada_prevista"],
-    "chegada_real": ["CHEGADA REAL", "Chegada Real", "dt_chegada_real"],
-    "situacao": ["SITUAÇÃO DE VOO", "Situacao Voo", "situacao"],
-    "motivo": ["MOTIVO", "Motivo Alteracao", "motivo_alteracao"],
+    "empresa":       ["EMPRESA (SIGLA)", "Empresa (Sigla)", "sg_empresa_icao"],
+    "voo":           ["NÚMERO VOO",      "Numero Voo",      "nr_voo"],
+    "origem":        ["ORIGEM",          "Aeroporto Origem","sg_icao_origem"],
+    "destino":       ["DESTINO",         "Aeroporto Destino","sg_icao_destino"],
+    "dt_ref":        ["DT_REFERENCIA",   "Dt Referencia",   "data_referencia"],
+    "partida_prev":  ["PARTIDA PREVISTA","Partida Prevista", "dt_partida_prevista"],
+    "partida_real":  ["PARTIDA REAL",    "Partida Real",    "dt_partida_real"],
+    "chegada_prev":  ["CHEGADA PREVISTA","Chegada Prevista", "dt_chegada_prevista"],
+    "chegada_real":  ["CHEGADA REAL",    "Chegada Real",    "dt_chegada_real"],
+    "situacao":      ["SITUAÇÃO DE VOO", "Situacao Voo",    "situacao"],
+    "motivo":        ["MOTIVO",          "Motivo Alteracao","motivo_alteracao"],
 }
+
 
 def get_col(row: dict, key: str) -> str:
     for nome in COLS.get(key, [key]):
         if nome in row:
             return (row[nome] or "").strip()
     return ""
+
 
 def parse_dt_anac(dt_str: str) -> str | None:
     if not dt_str or len(dt_str) < 16:
@@ -71,14 +94,16 @@ def parse_dt_anac(dt_str: str) -> str | None:
             continue
     return None
 
+
 def diff_minutos(partida_prev: str, partida_real: str) -> int | None:
     try:
         fmt = "%d/%m/%Y %H:%M"
-        dp = datetime.strptime(partida_prev.strip(), fmt)
-        dr = datetime.strptime(partida_real.strip(), fmt)
+        dp  = datetime.strptime(partida_prev.strip(), fmt)
+        dr  = datetime.strptime(partida_real.strip(), fmt)
         return int((dr - dp).total_seconds() / 60)
     except Exception:
         return None
+
 
 def baixar_vra() -> list[dict]:
     for url in [VRA_URL, VRA_URL_ALT]:
@@ -98,23 +123,24 @@ def baixar_vra() -> list[dict]:
             print(f"  [ERRO] {e}")
     return []
 
+
 def processar_vra(linhas: list[dict]) -> list[dict]:
     resultado = []
     for row in linhas:
-        origem = get_col(row, "origem").upper()
+        origem  = get_col(row, "origem").upper()
         destino = get_col(row, "destino").upper()
         if origem not in AIRPORTS and destino not in AIRPORTS:
             continue
 
-        empresa = get_col(row, "empresa")
-        nr_voo = get_col(row, "voo")
-        dt_ref_str = get_col(row, "dt_ref")
-        partida_prev = get_col(row, "partida_prev")
-        partida_real = get_col(row, "partida_real")
-        chegada_prev = get_col(row, "chegada_prev")
-        chegada_real = get_col(row, "chegada_real")
-        situacao = get_col(row, "situacao")
-        motivo = get_col(row, "motivo")
+        empresa       = get_col(row, "empresa")
+        nr_voo        = get_col(row, "voo")
+        dt_ref_str    = get_col(row, "dt_ref")
+        partida_prev  = get_col(row, "partida_prev")
+        partida_real  = get_col(row, "partida_real")
+        chegada_prev  = get_col(row, "chegada_prev")
+        chegada_real  = get_col(row, "chegada_real")
+        situacao      = get_col(row, "situacao")
+        motivo        = get_col(row, "motivo")
 
         dt_ref = None
         if dt_ref_str:
@@ -129,34 +155,51 @@ def processar_vra(linhas: list[dict]) -> list[dict]:
                 pass
 
         resultado.append({
-            "ano_mes": ano_mes,
-            "icao_empresa": empresa or None,
-            "nr_voo": nr_voo or None,
-            "icao_origem": origem or None,
-            "icao_destino": destino or None,
-            "dt_referencia": dt_ref,
-            "partida_real": parse_dt_anac(partida_real),
-            "chegada_real": parse_dt_anac(chegada_real),
-            "atraso_partida": diff_minutos(partida_prev, partida_real),
-            "atraso_chegada": diff_minutos(chegada_prev, chegada_real),
-            "situacao": situacao.lower() if situacao else None,
+            "ano_mes":          ano_mes,
+            "icao_empresa":     empresa or None,
+            "nr_voo":           nr_voo or None,
+            "icao_origem":      origem or None,
+            "icao_destino":     destino or None,
+            "dt_referencia":    dt_ref,
+            "partida_real":     parse_dt_anac(partida_real),
+            "chegada_real":     parse_dt_anac(chegada_real),
+            "atraso_partida":   diff_minutos(partida_prev, partida_real),
+            "atraso_chegada":   diff_minutos(chegada_prev, chegada_real),
+            "situacao":         situacao.lower() if situacao else None,
             "motivo_alteracao": motivo or None,
         })
 
     print(f"  Registros filtrados para os aeroportos configurados: {len(resultado)}")
     return resultado
 
-linhas_vra = baixar_vra()
+
+linhas_vra  = baixar_vra()
 if not linhas_vra:
     print("\n[AVISO] VRA não disponível para o período. Encerrando.")
     sys.exit(0)
 
-registros = processar_vra(linhas_vra)
+registros   = processar_vra(linhas_vra)
+
+unicos = {}
+for r in registros:
+    chave = (
+        r["dt_referencia"],
+        r["icao_empresa"],
+        r["nr_voo"],
+        r["icao_origem"],
+        r["icao_destino"],
+        r["ano_mes"],
+    )
+    unicos[chave] = r
+registros = list(unicos.values())
+
+print(f"Registros únicos após remoção de duplicados: {len(registros)}")
+
 processados = 0
-erros = 0
+erros       = 0
 
 for i in range(0, len(registros), LOTE):
-    lote = registros[i:i + LOTE]
+    lote     = registros[i:i + LOTE]
     num_lote = i // LOTE + 1
     try:
         db.table("historico_vra").upsert(
