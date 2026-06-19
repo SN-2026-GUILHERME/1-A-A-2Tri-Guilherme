@@ -91,6 +91,9 @@ def baixar_vra() -> list[dict]:
             r.raise_for_status()
             texto = r.content.decode("latin-1", errors="replace")
             reader = csv.DictReader(io.StringIO(texto), delimiter=";")
+            
+            print(f"  Colunas do CSV: {reader.fieldnames}")
+            
             registros = list(reader)
             print(f"  VRA carregado: {len(registros)} linhas brutas")
             return registros
@@ -103,6 +106,7 @@ def processar_vra(linhas: list[dict]) -> list[dict]:
     for row in linhas:
         origem = get_col(row, "origem").upper()
         destino = get_col(row, "destino").upper()
+        
         if origem not in AIRPORTS and destino not in AIRPORTS:
             continue
 
@@ -128,30 +132,54 @@ def processar_vra(linhas: list[dict]) -> list[dict]:
             except Exception:
                 pass
 
+        atraso_partida = diff_minutos(partida_prev, partida_real)
+        atraso_chegada = diff_minutos(chegada_prev, chegada_real)
+
+        # CORREÇÃO: não insere se não tiver dados mínimos
+        if not empresa or not nr_voo or not origem or not destino:
+            continue
+
         resultado.append({
             "ano_mes": ano_mes,
-            "icao_empresa": empresa or None,
-            "nr_voo": nr_voo or None,
-            "icao_origem": origem or None,
-            "icao_destino": destino or None,
+            "icao_empresa": empresa,
+            "nr_voo": nr_voo,
+            "icao_origem": origem,
+            "icao_destino": destino,
             "dt_referencia": dt_ref,
             "partida_real": parse_dt_anac(partida_real),
             "chegada_real": parse_dt_anac(chegada_real),
-            "atraso_partida": diff_minutos(partida_prev, partida_real),
-            "atraso_chegada": diff_minutos(chegada_prev, chegada_real),
+            "atraso_partida": atraso_partida,
+            "atraso_chegada": atraso_chegada,
             "situacao": situacao.lower() if situacao else None,
             "motivo_alteracao": motivo or None,
         })
 
-    print(f"  Registros filtrados para os aeroportos configurados: {len(resultado)}")
+    print(f"  Registros filtrados: {len(resultado)}")
+    
+    if len(resultado) > 0:
+        print(f"  Exemplo do primeiro registro: {resultado[0]}")
+    
     return resultado
 
+print("\n" + "="*50)
+print("INICIANDO BUSCA DO HISTÓRICO VRA/ANAC")
+print("="*50 + "\n")
+
 linhas_vra = baixar_vra()
+
 if not linhas_vra:
     print("\n[AVISO] VRA não disponível para o período. Encerrando.")
     sys.exit(0)
 
 registros = processar_vra(linhas_vra)
+
+if not registros:
+    print("\n[AVISO] Nenhum registro filtrado para os aeroportos configurados.")
+    print("  Verifique se os ICAOs estão corretos e se há voos no período.")
+    sys.exit(0)
+
+print(f"\nTotal de registros a inserir: {len(registros)}")
+
 processados = 0
 erros = 0
 
@@ -164,12 +192,12 @@ for i in range(0, len(registros), LOTE):
             on_conflict="ano_mes,icao_empresa,nr_voo,icao_origem,icao_destino,dt_referencia",
         ).execute()
         processados += len(lote)
-        print(f"  Lote {num_lote}: {len(lote)} registros enviados/processados")
+        print(f"  Lote {num_lote}: {len(lote)} registros enviados")
     except Exception as e:
         erros += 1
         print(f"  [ERRO] Lote {num_lote}: {e}")
 
-print(f"\nConcluído — {processados} registros históricos enviados/processados.")
+print(f"\nConcluído — {processados} registros históricos inseridos.")
 if erros > 0:
     print(f"[ATENÇÃO] {erros} lote(s) com erro.")
     sys.exit(1)
