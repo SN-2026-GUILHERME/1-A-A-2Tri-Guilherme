@@ -51,18 +51,21 @@ VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%
 
 VRA_URL_ALT = f"https://www.gov.br/anac/pt-br/assuntos/dados-e-estatisticas/dados-estatisticos/arquivos/VRA{ano}{mes}.csv"
 
+# Nomes de coluna confirmados no CSV real baixado de VRA_20265.csv
+# (cabeçalho: "ICAO Empresa Aérea";"Número Voo";"Código Autorização (DI)";"Código Tipo Linha";
+#  "ICAO Aeródromo Origem";"ICAO Aeródromo Destino";"Partida Prevista";"Partida Real";
+#  "Chegada Prevista";"Chegada Real";"Situação Voo";"Código Justificativa")
 COLS = {
-    "empresa": ["EMPRESA (SIGLA)", "Empresa (Sigla)", "sg_empresa_icao"],
-    "voo": ["NÚMERO VOO", "Numero Voo", "nr_voo"],
-    "origem": ["ORIGEM", "Aeroporto Origem", "sg_icao_origem"],
-    "destino": ["DESTINO", "Aeroporto Destino", "sg_icao_destino"],
-    "dt_ref": ["DT_REFERENCIA", "Dt Referencia", "data_referencia"],
-    "partida_prev": ["PARTIDA PREVISTA", "Partida Prevista", "dt_partida_prevista"],
-    "partida_real": ["PARTIDA REAL", "Partida Real", "dt_partida_real"],
-    "chegada_prev": ["CHEGADA PREVISTA", "Chegada Prevista", "dt_chegada_prevista"],
-    "chegada_real": ["CHEGADA REAL", "Chegada Real", "dt_chegada_real"],
-    "situacao": ["SITUAÇÃO DE VOO", "Situacao Voo", "situacao"],
-    "motivo": ["MOTIVO", "Motivo Alteracao", "motivo_alteracao"],
+    "empresa": ["ICAO Empresa Aérea", "EMPRESA (SIGLA)", "Empresa (Sigla)", "sg_empresa_icao"],
+    "voo": ["Número Voo", "NÚMERO VOO", "Numero Voo", "nr_voo"],
+    "origem": ["ICAO Aeródromo Origem", "ORIGEM", "Aeroporto Origem", "sg_icao_origem"],
+    "destino": ["ICAO Aeródromo Destino", "DESTINO", "Aeroporto Destino", "sg_icao_destino"],
+    "partida_prev": ["Partida Prevista", "PARTIDA PREVISTA", "dt_partida_prevista"],
+    "partida_real": ["Partida Real", "PARTIDA REAL", "dt_partida_real"],
+    "chegada_prev": ["Chegada Prevista", "CHEGADA PREVISTA", "dt_chegada_prevista"],
+    "chegada_real": ["Chegada Real", "CHEGADA REAL", "dt_chegada_real"],
+    "situacao": ["Situação Voo", "SITUAÇÃO DE VOO", "Situacao Voo", "situacao"],
+    "motivo": ["Código Justificativa", "MOTIVO", "Motivo Alteracao", "motivo_alteracao"],
 }
 
 def get_col(row: dict, key: str) -> str:
@@ -71,25 +74,34 @@ def get_col(row: dict, key: str) -> str:
             return (row[nome] or "").strip()
     return ""
 
-def parse_dt_anac(dt_str: str) -> str | None:
-    if not dt_str or len(dt_str) < 16:
+def _parse_raw(dt_str: str) -> datetime | None:
+    if not dt_str:
         return None
-    for fmt in ("%d/%m/%Y %H:%M", "%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M:%S"):
+    s = dt_str.strip()
+    if not s or s.lower() == "null":
+        return None
+    # o VRA traz nanossegundos (ex: "2026-05-29 01:00:00.100000000"),
+    # mas strptime só aceita até 6 dígitos (microssegundos) em %f — trunca antes de parsear
+    if "." in s:
+        base, frac = s.split(".", 1)
+        s = f"{base}.{frac[:6]}"
+    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M"):
         try:
-            dt = datetime.strptime(dt_str.strip(), fmt)
-            return dt.replace(tzinfo=timezone.utc).isoformat()
+            return datetime.strptime(s, fmt)
         except ValueError:
             continue
     return None
 
+def parse_dt_anac(dt_str: str) -> str | None:
+    dt = _parse_raw(dt_str)
+    return dt.replace(tzinfo=timezone.utc).isoformat() if dt else None
+
 def diff_minutos(partida_prev: str, partida_real: str) -> int | None:
-    try:
-        fmt = "%d/%m/%Y %H:%M"
-        dp = datetime.strptime(partida_prev.strip(), fmt)
-        dr = datetime.strptime(partida_real.strip(), fmt)
-        return int((dr - dp).total_seconds() / 60)
-    except Exception:
+    dp = _parse_raw(partida_prev)
+    dr = _parse_raw(partida_real)
+    if not dp or not dr:
         return None
+    return int((dr - dp).total_seconds() / 60)
 
 def baixar_vra() -> list[dict]:
     for url in [VRA_URL, VRA_URL_ALT]:
@@ -100,8 +112,16 @@ def baixar_vra() -> list[dict]:
                 print(f"  Não encontrado (404) — tentando URL alternativa.")
                 continue
             r.raise_for_status()
-            texto = r.content.decode("latin-1", errors="replace")
-            reader = csv.DictReader(io.StringIO(texto), delimiter=";")
+            try:
+                texto = r.content.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                texto = r.content.decode("latin-1", errors="replace")
+            # a 1ª linha do arquivo é um metadado ("Atualizado em: AAAA-MM-DD"),
+            # não faz parte do cabeçalho do CSV — precisa ser removida antes do DictReader
+            linhas_texto = texto.splitlines()
+            if linhas_texto and linhas_texto[0].strip().lower().startswith("atualizado"):
+                linhas_texto = linhas_texto[1:]
+            reader = csv.DictReader(linhas_texto, delimiter=";")
             registros = list(reader)
             print(f"  VRA carregado: {len(registros)} linhas brutas")
             return registros
@@ -119,7 +139,6 @@ def processar_vra(linhas: list[dict]) -> list[dict]:
 
         empresa = get_col(row, "empresa")
         nr_voo = get_col(row, "voo")
-        dt_ref_str = get_col(row, "dt_ref")
         partida_prev = get_col(row, "partida_prev")
         partida_real = get_col(row, "partida_real")
         chegada_prev = get_col(row, "chegada_prev")
@@ -127,17 +146,15 @@ def processar_vra(linhas: list[dict]) -> list[dict]:
         situacao = get_col(row, "situacao")
         motivo = get_col(row, "motivo")
 
-        dt_ref = None
-        if dt_ref_str:
-            try:
-                for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
-                    try:
-                        dt_ref = datetime.strptime(dt_ref_str.strip(), fmt).date().isoformat()
-                        break
-                    except ValueError:
-                        continue
-            except Exception:
-                pass
+        # não existe coluna de data separada no CSV real — a data do voo
+        # é a data da Partida Prevista; se ela vier "null" (acontece em ~2% das linhas),
+        # cai para Chegada Prevista, depois Partida Real, como fallback
+        dt_ref_base = (
+            _parse_raw(partida_prev)
+            or _parse_raw(chegada_prev)
+            or _parse_raw(partida_real)
+        )
+        dt_ref = dt_ref_base.date().isoformat() if dt_ref_base else None
 
         resultado.append({
             "ano_mes": ano_mes,
