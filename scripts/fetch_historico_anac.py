@@ -36,7 +36,12 @@ ano, mes = ano_mes.split("-")
 print(f"Período histórico: {ano_mes}")
 print(f"Aeroportos filtrados: {', '.join(AIRPORTS)}")
 
-VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es/VRA/{ano}/{ano}{mes}.csv"
+# URL corrigida (item C): o caminho antigo ("Voos e operações/VRA") não existe mais.
+# O caminho correto no portal de dados abertos da ANAC é:
+# Voos e operações aéreas / Voo Regular Ativo (VRA) / <ano> / VRA_<ano><mes>.csv
+# Confirme o nome exato do arquivo abrindo a pasta no navegador antes de rodar o workflow:
+# https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/<ano>/
+VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/{ano}/VRA_{ano}{mes}.csv"
 
 VRA_URL_ALT = f"https://www.gov.br/anac/pt-br/assuntos/dados-e-estatisticas/dados-estatisticos/arquivos/VRA{ano}{mes}.csv"
 
