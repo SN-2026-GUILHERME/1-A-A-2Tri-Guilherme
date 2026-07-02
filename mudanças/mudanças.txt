@@ -1,42 +1,32 @@
-MUDANÇAS REALIZADAS NO PROJETO SN-2026
+# SN-2026 — Painel de Voos
 
-ARQUIVO ALTERADO: index.html
+Painel de voos do dia (SIROS/ANAC) e histórico mensal de voos realizados (VRA/ANAC), com banco no Supabase e pipelines automatizados via GitHub Actions.
 
+> Projeto desenvolvido com apoio do **Claude (Anthropic)** para diagnóstico de bugs e correção dos scripts.
 
+---
 
-FUNÇÃO loadHistorico() - PRINCIPAL MUDANÇA
+## O que foi corrigido
 
-Antes: consultava a tabela historico_vra (VAZIA)
-const dados = await sbFetch(`historico_vra?or=(icao_origem.eq.${icao},icao_destino.eq.${icao})&ano_mes=eq.${anoMes}...`);
+1. **Histórico não aparecia no painel** — o frontend consultava a tabela errada (`voos` em vez de `historico_vra`) e exibia o status fixo como "programado". Corrigido para consultar `historico_vra` e mostrar o status real (`realizado`, `cancelado`, `desviado`).
 
-Depois: consulta a tabela voos (COM DADOS)
-const [ano, mes] = anoMes.split('-');
-const dataInicio = `${ano}-${mes}-01`;
-const ultimoDia = new Date(ano, mes, 0).getDate();
-const dataFim = `${ano}-${mes}-${ultimoDia}`;
-const dados = await sbFetch(`voos?data_referencia=gte.${dataInicio}&data_referencia=lte.${dataFim}&or=(icao_origem.eq.${icao},icao_destino.eq.${icao})...`);
+2. **Importação do VRA dava 404** — a URL usada estava errada e, mesmo depois de um primeiro ajuste, ficou fixa só para o mês de maio. Corrigida para montar a URL certa para qualquer mês, seguindo a estrutura real do portal da ANAC (pasta por mês, ex: `2026/02 - Fevereiro/VRA_20262.csv`).
 
+3. **Parsing do CSV quebrava** — o arquivo real da ANAC tem uma linha de metadado antes do cabeçalho, colunas com nomes diferentes dos esperados, datas com nanossegundos (o Python só aceita microssegundos) e encoding UTF-8 com BOM. Todos esses pontos foram ajustados.
 
-ESTATÍSTICAS DO HISTÓRICO
+4. **Erro `ON CONFLICT DO UPDATE... duplicate`** — o CSV traz voos duplicados, e o Postgres não aceita afetar a mesma linha duas vezes no mesmo upsert. Adicionada uma função de deduplicação, aplicada antes do envio ao banco.
 
-Antes:
-const realiz = dados.filter(f => f.situacao.includes('realiz')).length;
-const canc = dados.filter(f => f.situacao.includes('cancel')).length;
+5. **Painel limitava a 1000 voos** — a consulta ao histórico tinha um limite fixo, cortando aeroportos com mais voos no mês. Identificado, ajuste de paginação ainda pendente.
 
-Depois:
-const programados = dados.length;
-const cancelados = 0;
+---
 
+## Dados importados
 
-RENDERIZAÇÃO DA TABELA
+Meses de **01 a 05 de 2026** importados na tabela `historico_vra`. Junho e julho ainda não têm dado publicado pela ANAC (pastas vazias no portal) — serão importados automaticamente pelo cron mensal assim que disponíveis.
 
-Antes: exibia coluna "Atraso Partida" com minutos
-Depois: exibe coluna "Status" com valor "Programado"
+## Pipelines (GitHub Actions)
 
-
-TEXTOS DA INTERFACE
-
-- Título: "Consulta histórica — Voos registrados" (antes era VRA/ANAC)
-- Rodapé: "Histórico: Voos registrados" (antes link para ANAC)
-
-- .github/workflows/importar-historico.yml
+| Workflow | Frequência | Fonte |
+|---|---|---|
+| Pipeline SIROS → Supabase | 4x ao dia | Voos do dia |
+| Importar Histórico ANAC/VRA | Mensal ou manual (`ano_mes`) | Histórico mensal |
