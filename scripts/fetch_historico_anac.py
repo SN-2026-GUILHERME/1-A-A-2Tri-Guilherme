@@ -47,7 +47,7 @@ MESES_PT = {
 }
 mes_int = int(mes)
 pasta_mes = quote(f"{mes_int:02d} - {MESES_PT[mes_int]}")
-VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/{ano}/{pasta_mes}/VRA_{ano}{mes_int}.csv"
+VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/{ano}/VRA_{ano}{mes}.csv"
 
 VRA_URL_ALT = f"https://www.gov.br/anac/pt-br/assuntos/dados-e-estatisticas/dados-estatisticos/arquivos/VRA{ano}{mes}.csv"
 
