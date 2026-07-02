@@ -46,8 +46,13 @@ MESES_PT = {
     7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
 }
 mes_int = int(mes)
+mes_sem_zero = str(mes_int)
 pasta_mes = quote(f"{mes_int:02d} - {MESES_PT[mes_int]}")
-VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/{ano}/VRA_{ano}{mes}.csv"
+
+VRA_URL = (
+    f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/"
+    f"Voo%20Regular%20Ativo%20%28VRA%29/{ano}/{pasta_mes}/VRA_{ano}{mes_sem_zero}.csv"
+)
 
 VRA_URL_ALT = f"https://www.gov.br/anac/pt-br/assuntos/dados-e-estatisticas/dados-estatisticos/arquivos/VRA{ano}{mes}.csv"
 
@@ -174,12 +179,40 @@ def processar_vra(linhas: list[dict]) -> list[dict]:
     print(f"  Registros filtrados para os aeroportos configurados: {len(resultado)}")
     return resultado
 
+# Remove duplicatas internas antes do envio
+# (o mesmo voo pode aparecer mais de uma vez no CSV bruto do VRA — o Postgres
+# não aceita que o mesmo ON CONFLICT DO UPDATE afete a mesma linha duas vezes
+# na mesma operação, por isso precisa ser feito ANTES do envio em lotes)
+def deduplicar(lista: list) -> list:
+    seen = set()
+    result = []
+    for r in lista:
+        key = (
+            r.get("ano_mes"),
+            r.get("icao_empresa"),
+            r.get("nr_voo"),
+            r.get("icao_origem"),
+            r.get("icao_destino"),
+            r.get("dt_referencia"),
+        )
+        if key not in seen:
+            seen.add(key)
+            result.append(r)
+    return result
+
 linhas_vra = baixar_vra()
 if not linhas_vra:
     print("\n[AVISO] VRA não disponível para o período. Encerrando.")
     sys.exit(0)
 
 registros = processar_vra(linhas_vra)
+
+antes = len(registros)
+registros = deduplicar(registros)
+removidos = antes - len(registros)
+if removidos:
+    print(f"  Deduplicação: {removidos} registro(s) duplicado(s) removido(s) antes do envio")
+
 processados = 0
 erros = 0
 
@@ -201,28 +234,3 @@ print(f"\nConcluído — {processados} registros históricos enviados/processado
 if erros > 0:
     print(f"[ATENÇÃO] {erros} lote(s) com erro.")
     sys.exit(1)
-
-# Remove duplicatas internas antes do envio
-# (o mesmo voo pode aparecer mais de uma vez no CSV bruto do VRA)
-def deduplicar(lista: list) -> list:
-    seen = set()
-    result = []
-    for r in lista:
-        key = (
-            r.get("ano_mes"),
-            r.get("icao_empresa"),
-            r.get("nr_voo"),
-            r.get("icao_origem"),
-            r.get("icao_destino"),
-            r.get("dt_referencia"),
-        )
-        if key not in seen:
-            seen.add(key)
-            result.append(r)
-    return result
-
-antes = len(registros)
-registros = deduplicar(registros)
-removidos = antes - len(registros)
-if removidos:
-    print(f"  Deduplicação: {removidos} registro(s) duplicado(s) removido(s) antes do envio")
