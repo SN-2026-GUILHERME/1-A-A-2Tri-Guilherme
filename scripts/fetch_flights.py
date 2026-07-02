@@ -168,6 +168,32 @@ registros = list(unicos.values())
 print(f"Registros após remoção de duplicatas: {len(registros)}")
 print(f"\nRegistros filtrados para os aeroportos configurados: {len(registros)}")
 
+# Obs: o upsert usa constraint (data_referencia, icao_empresa, numero_voo, icao_origem, icao_destino, etapa).
+# O PostgreSQL não aceita que o mesmo ON CONFLICT DO UPDATE afete a mesma linha duas vezes
+# na mesma operação, por isso os registros são deduplicados novamente aqui, logo antes do envio.
+def deduplicar(lista: list) -> list:
+    seen = set()
+    result = []
+    for r in lista:
+        key = (
+            r.get("data_referencia"),
+            r.get("icao_empresa"),
+            r.get("numero_voo"),
+            r.get("icao_origem"),
+            r.get("icao_destino"),
+            r.get("etapa"),
+        )
+        if key not in seen:
+            seen.add(key)
+            result.append(r)
+    return result
+
+antes = len(registros)
+registros = deduplicar(registros)
+removidos = antes - len(registros)
+if removidos:
+    print(f"  Deduplicação: {removidos} registro(s) duplicado(s) removido(s) antes do envio")
+
 total_processados = 0
 total_lotes = 0
 total_erros = 0
