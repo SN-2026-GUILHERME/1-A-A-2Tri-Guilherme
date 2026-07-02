@@ -169,7 +169,7 @@ print(f"Registros após remoção de duplicatas: {len(registros)}")
 print(f"\nRegistros filtrados para os aeroportos configurados: {len(registros)}")
 
 # Obs: o upsert usa constraint (data_referencia, icao_empresa, numero_voo, icao_origem, icao_destino, etapa).
-# O PostgreSQL não aceita que o mesmo ON CONFLICT DO UPDATE afete a mesma linha duas vezessssss
+# O PostgreSQL não aceita que o mesmo ON CONFLICT DO UPDATE afete a mesma linha duas vezes
 # na mesma operação, por isso os registros são deduplicados novamente aqui, logo antes do envio.
 def deduplicar(lista: list) -> list:
     seen = set()
