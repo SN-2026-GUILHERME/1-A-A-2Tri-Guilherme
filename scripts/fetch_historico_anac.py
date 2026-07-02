@@ -3,6 +3,7 @@ import io
 import os
 import sys
 from datetime import datetime, timezone, timedelta
+from urllib.parse import quote
 
 import requests
 from supabase import create_client
@@ -36,12 +37,17 @@ ano, mes = ano_mes.split("-")
 print(f"Período histórico: {ano_mes}")
 print(f"Aeroportos filtrados: {', '.join(AIRPORTS)}")
 
-# URL corrigida (item C): o caminho antigo ("Voos e operações/VRA") não existe mais.
-# O caminho correto no portal de dados abertos da ANAC é:
-# Voos e operações aéreas / Voo Regular Ativo (VRA) / <ano> / VRA_<ano><mes>.csv
-# Confirme o nome exato do arquivo abrindo a pasta no navegador antes de rodar o workflow:
+# URL corrigida (item C): estrutura real confirmada em
 # https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/<ano>/
-VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/{ano}/VRA_{ano}{mes}.csv"
+# Dentro do ano existe uma PASTA POR MÊS em português, ex: "05 - Maio/"
+# e dentro dela o arquivo usa o mês SEM zero à esquerda, ex: VRA_20265.csv (maio/2026)
+MESES_PT = {
+    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho",
+    7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro",
+}
+mes_int = int(mes)
+pasta_mes = quote(f"{mes_int:02d} - {MESES_PT[mes_int]}")
+VRA_URL = f"https://sistemas.anac.gov.br/dadosabertos/Voos%20e%20opera%C3%A7%C3%B5es%20a%C3%A9reas/Voo%20Regular%20Ativo%20%28VRA%29/{ano}/{pasta_mes}/VRA_{ano}{mes_int}.csv"
 
 VRA_URL_ALT = f"https://www.gov.br/anac/pt-br/assuntos/dados-e-estatisticas/dados-estatisticos/arquivos/VRA{ano}{mes}.csv"
 
