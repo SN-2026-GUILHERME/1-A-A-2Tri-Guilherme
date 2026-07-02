@@ -201,3 +201,28 @@ print(f"\nConcluído — {processados} registros históricos enviados/processado
 if erros > 0:
     print(f"[ATENÇÃO] {erros} lote(s) com erro.")
     sys.exit(1)
+
+# Remove duplicatas internas antes do envio
+# (o mesmo voo pode aparecer mais de uma vez no CSV bruto do VRA)
+def deduplicar(lista: list) -> list:
+    seen = set()
+    result = []
+    for r in lista:
+        key = (
+            r.get("ano_mes"),
+            r.get("icao_empresa"),
+            r.get("nr_voo"),
+            r.get("icao_origem"),
+            r.get("icao_destino"),
+            r.get("dt_referencia"),
+        )
+        if key not in seen:
+            seen.add(key)
+            result.append(r)
+    return result
+
+antes = len(registros)
+registros = deduplicar(registros)
+removidos = antes - len(registros)
+if removidos:
+    print(f"  Deduplicação: {removidos} registro(s) duplicado(s) removido(s) antes do envio")
